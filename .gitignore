@@ -1,0 +1,9 @@
+# IDE settings
+.idea/
+
+# Local AI instructions and skills
+.ai/
+.agents/
+.skills/
+AGENTS.md
+SKILL.md
