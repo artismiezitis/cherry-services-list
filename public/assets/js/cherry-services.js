@@ -23,11 +23,6 @@
 			templates: {
 				loaderLarge: '<div class="services-loader loader-large">' + window.cherryServices.loader + '</div>',
 				loaderSmall: '<div class="services-loader loader-small">' + window.cherryServices.loader + '</div>',
-			},
-			state: {
-				filters: false,
-				more: false,
-				pager: false
 			}
 
 		},
@@ -40,21 +35,21 @@
 			if ( CherryJsCore.status.is_ready ) {
 				self.render( self );
 			} else {
-				CherryJsCore.variable.$document.on( 'ready', self.render( self ) );
+				$( function() { self.render( self ); } );
 			}
 
 		},
 
 		render: function ( self ) {
 
-			if ( ! window.elementorFrontend ) {
-				$( self.settings.selectors.main ).each( function() {
-					self.initFilters( $( this ) );
-					self.initLoadMore( $( this ) );
-					self.initPager( $( this ) );
-				} );
-			} else {
-				$( window ).on( 'elementor/frontend/init', self.initElementorWidget );
+			$( self.settings.selectors.main ).each( function() {
+				self.initFilters( $( this ) );
+				self.initLoadMore( $( this ) );
+				self.initPager( $( this ) );
+			} );
+			$( window ).on( 'elementor/frontend/init', self.initElementorWidget );
+			if ( window.elementorFrontend && window.elementorFrontend.hooks ) {
+				self.initElementorWidget();
 			}
 
 		},
@@ -68,12 +63,6 @@
 					var $container = $scope.find( servicesListPublic.settings.selectors.main );
 
 					if ( $container.length ) {
-
-						if ( window.elementorFrontend.isEditMode() ) {
-							servicesListPublic.settings.state.filters = false;
-							servicesListPublic.settings.state.more    = false;
-							servicesListPublic.settings.state.pager   = false;
-						}
 
 						servicesListPublic.initFilters( $container );
 						servicesListPublic.initLoadMore( $container );
@@ -109,11 +98,11 @@
 
 		initFilters: function( $item ) {
 
-			if ( false !== servicesListPublic.settings.state.filters ) {
+			if ( $item.data( 'cherry-services-filters' ) ) {
 				return;
 			}
 
-			servicesListPublic.settings.state.filters = true;
+			$item.data( 'cherry-services-filters', true );
 
 			var $filter    = $item.find( servicesListPublic.settings.selectors.filter ),
 				$result    = $item.find( servicesListPublic.settings.selectors.result ),
@@ -158,7 +147,7 @@
 						$( servicesListPublic.settings.selectors.loadMore, $item ).removeClass( 'btn-hidden' );
 					}
 
-					if ( 1 == response.data.pages && $( servicesListPublic.settings.selectors.loadMore, $item ).length ) {
+					if ( 1 >= response.data.pages && $( servicesListPublic.settings.selectors.loadMore, $item ).length ) {
 						$( servicesListPublic.settings.selectors.loadMore, $item ).addClass( 'btn-hidden' );
 					}
 
@@ -174,11 +163,11 @@
 
 		initLoadMore: function( $item ) {
 
-			if ( false !== servicesListPublic.settings.state.more ) {
+			if ( $item.data( 'cherry-services-more' ) ) {
 				return;
 			}
 
-			servicesListPublic.settings.state.more = true;
+			$item.data( 'cherry-services-more', true );
 
 			$item.on( 'click', servicesListPublic.settings.selectors.loadMore, function( event ) {
 
@@ -221,11 +210,11 @@
 
 		initPager: function( $item ) {
 
-			if ( false !== servicesListPublic.settings.state.pager ) {
+			if ( $item.data( 'cherry-services-pager' ) ) {
 				return;
 			}
 
-			servicesListPublic.settings.state.pager = true;
+			$item.data( 'cherry-services-pager', true );
 
 			$item.on( 'click', servicesListPublic.settings.selectors.pager + ' a.page-numbers', function( event ) {
 

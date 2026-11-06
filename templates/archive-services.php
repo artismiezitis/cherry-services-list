@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
-get_header( 'services' );
+cherry_services_templater()->render_header();
 ?>
 
 	<?php
@@ -66,4 +66,4 @@ get_header( 'services' );
 		do_action( 'cherry_services_sidebar' );
 	?>
 
-<?php get_footer( 'services' );
+<?php cherry_services_templater()->render_footer();

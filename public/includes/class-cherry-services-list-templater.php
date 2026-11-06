@@ -154,13 +154,35 @@ class Cherry_Services_List_Templater extends Cherry_Services_List {
 		}
 
 		if ( $file ) {
+			if ( 'page.php' === $file && wp_is_block_theme() ) {
+				return $template;
+			}
 			$template = locate_template( array_unique( $find ) );
 			if ( ! $template ) {
-				$template = $this->plugin_path( 'templates/' . $file );
+				$fallback = $this->plugin_path( 'templates/' . $file );
+				$template = file_exists( $fallback ) ? $fallback : get_page_template();
 			}
 		}
 
 		return $template;
+	}
+
+	/** Render the active theme's header, including block themes. */
+	public function render_header() {
+		if ( wp_is_block_theme() ) {
+			require $this->plugin_path( 'templates/header-services.php' );
+		} else {
+			get_header( 'services' );
+		}
+	}
+
+	/** Render the active theme's footer, including block themes. */
+	public function render_footer() {
+		if ( wp_is_block_theme() ) {
+			require $this->plugin_path( 'templates/footer-services.php' );
+		} else {
+			get_footer( 'services' );
+		}
 	}
 
 	/**
@@ -241,6 +263,11 @@ class Cherry_Services_List_Templater extends Cherry_Services_List {
 	 * @return string
 	 */
 	public function get_template_by_name( $template ) {
+
+		// Templates are filenames, never arbitrary paths supplied by an AJAX request.
+		if ( ! is_string( $template ) || basename( $template ) !== $template || ! preg_match( '/^[a-zA-Z0-9_-]+\.tmpl$/D', $template ) ) {
+			$template = 'default.tmpl';
+		}
 
 		$file       = '';
 		$default    = $this->plugin_path( 'templates/tmpl/default.tmpl' );

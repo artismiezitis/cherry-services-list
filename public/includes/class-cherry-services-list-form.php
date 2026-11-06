@@ -40,8 +40,17 @@ if ( ! class_exists( 'Cherry_Services_List_Form' ) ) {
 		 */
 		public function start_session() {
 
-			if ( ! session_id() ) {
-				session_start();
+			if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || headers_sent() ) {
+				return;
+			}
+
+			// Only submissions and visitors with an existing session need a session.
+			if ( empty( $_POST['cherry-services-form'] ) && empty( $_COOKIE[ session_name() ] ) ) {
+				return;
+			}
+
+			if ( PHP_SESSION_NONE === session_status() ) {
+				session_start( array( 'read_and_close' => true ) );
 			}
 
 		}
@@ -67,6 +76,14 @@ if ( ! class_exists( 'Cherry_Services_List_Form' ) ) {
 				return;
 			}
 
+			if ( empty( $_POST['cherry-services-nonce'] ) || ! is_string( $_POST['cherry-services-nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['cherry-services-nonce'] ) ), 'cherry-services-form-' . $post_id ) ) {
+				return;
+			}
+
+			if ( 'publish' !== get_post_status( $post_id ) ) {
+				return;
+			}
+
 			$to = get_post_meta( $post_id, 'cherry-services-form-mail', true );
 
 			$success_message = get_post_meta(
@@ -76,6 +93,9 @@ if ( ! class_exists( 'Cherry_Services_List_Form' ) ) {
 			);
 
 			$fields = get_post_meta( $post_id, 'cherry-services-cta-form', true );
+			if ( ! is_array( $fields ) ) {
+				return;
+			}
 
 			if ( ! $to ) {
 				$to = get_bloginfo( 'admin_email' );
@@ -84,21 +104,37 @@ if ( ! class_exists( 'Cherry_Services_List_Form' ) ) {
 			$subject = sprintf( esc_html__( 'Request on %s', 'cherry-services' ), get_the_title( $post_id ) );
 			$message = $subject . "\r\n\r\n";
 
-			$index = 0;
-			foreach ( $_POST['service-cta'] as $field => $value ) {
-
-				$label = $this->get_field_name( $fields, $index );
-
-				$message .= $label . ": " . esc_attr( $value ) . "\r\n";
-				$index++;
+			$submitted = wp_unslash( $_POST['service-cta'] );
+			foreach ( $fields as $field ) {
+				if ( ! is_array( $field ) || empty( $field['name'] ) ) {
+					continue;
+				}
+				$value = isset( $submitted[ $field['name'] ] ) ? $submitted[ $field['name'] ] : '';
+				if ( ! is_string( $value ) ) {
+					return;
+				}
+				$value = sanitize_textarea_field( $value );
+				if ( ( 'no' !== ( $field['required'] ?? 'yes' ) && '' === trim( $value ) ) || ( 'email' === ( $field['type'] ?? '' ) && '' !== $value && ! is_email( $value ) ) ) {
+					return;
+				}
+				$label = sanitize_text_field( $field['label'] ?? $field['name'] );
+				$message .= $label . ': ' . $value . "\r\n";
 			}
 
-			wp_mail( $to, $subject, $message );
+			if ( ! wp_mail( $to, $subject, $message ) ) {
+				return;
+			}
 
+			if ( PHP_SESSION_NONE === session_status() && ! headers_sent() ) {
+				session_start();
+			}
 			$_SESSION['cherry-services']['messages'][ $post_id ] = $success_message;
+			if ( PHP_SESSION_ACTIVE === session_status() ) {
+				session_write_close();
+			}
 
-			if ( ! empty( $_POST['cherry-services-ref'] ) && false !== strpos( $_POST['cherry-services-ref'], home_url() ) ) {
-				wp_safe_redirect( esc_url( $_POST['cherry-services-ref'] ) );
+			if ( ! empty( $_POST['cherry-services-ref'] ) && is_string( $_POST['cherry-services-ref'] ) ) {
+				wp_safe_redirect( wp_validate_redirect( wp_unslash( $_POST['cherry-services-ref'] ), get_permalink( $post_id ) ) );
 				die();
 			}
 
@@ -150,7 +186,13 @@ if ( ! class_exists( 'Cherry_Services_List_Form' ) ) {
 			}
 
 			$message = esc_html( $_SESSION['cherry-services']['messages'][ $post_id ] );
+			if ( PHP_SESSION_NONE === session_status() && ! headers_sent() ) {
+				session_start();
+			}
 			unset( $_SESSION['cherry-services']['messages'][ $post_id ] );
+			if ( PHP_SESSION_ACTIVE === session_status() ) {
+				session_write_close();
+			}
 
 			return $message;
 		}

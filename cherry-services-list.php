@@ -1,11 +1,14 @@
 <?php
 /**
  * Plugin Name: Cherry Services List
- * Plugin URI:
+ * Plugin URI:  https://github.com/artismiezitis/cherry-services-list
+ * Update URI:  https://github.com/artismiezitis/cherry-services-list
  * Description: Cherry Services is a flexible WordPress plugin that lets you display your company’s services in a variety of ways.
- * Version:     1.4.7
- * Author:      Zemez
- * Author URI:  https://zemez.io/wordpress/
+ * Version:     1.5.1-cit
+ * Requires at least: 6.0
+ * Requires PHP: 8.0
+ * Author:      Zemez / Cherry Team, Creative IT
+ * Author URI:  https://creativeit.lv/
  * Text Domain: cherry-services
  * License:     GPL-3.0+
  * License URI: http://www.gnu.org/licenses/gpl-3.0.txt
@@ -92,7 +95,7 @@ if ( ! class_exists( 'Cherry_Services_List' ) ) {
 		 * @access private
 		 * @var    string
 		 */
-		private $version = '1.4.7';
+		private $version = '1.5.1-cit';
 
 		/**
 		 * Plugin CPT name
@@ -171,7 +174,7 @@ if ( ! class_exists( 'Cherry_Services_List' ) ) {
 			add_action( 'after_setup_theme', array( $this, 'load_files' ), 3 );
 
 			// Internationalize the text strings used.
-			add_action( 'after_setup_theme', array( $this, 'lang' ), 11 );
+			add_action( 'init', array( $this, 'lang' ), 0 );
 			// Load the admin files.
 			add_action( 'after_setup_theme', array( $this, 'admin' ), 12 );
 			// Load the admin files.
@@ -210,7 +213,7 @@ if ( ! class_exists( 'Cherry_Services_List' ) ) {
 				return $this->core;
 			}
 
-			if ( 0 < sizeof( $chery_core_version ) ) {
+			if ( is_array( $chery_core_version ) && ! empty( $chery_core_version ) ) {
 				$core_paths = array_values( $chery_core_version );
 				require_once( $core_paths[0] );
 			} else {
@@ -332,7 +335,7 @@ if ( ! class_exists( 'Cherry_Services_List' ) ) {
 		 * @return void
 		 */
 		public function setup() {
-			require $this->plugin_path( 'public/includes/class-cherry-services-list-init.php' );
+			require_once $this->plugin_path( 'public/includes/class-cherry-services-list-init.php' );
 		}
 
 		/**
@@ -391,7 +394,7 @@ if ( ! class_exists( 'Cherry_Services_List' ) ) {
 		 * @return void
 		 */
 		public function lang() {
-			load_plugin_textdomain( 'blank-plugin', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+			load_plugin_textdomain( 'cherry-services', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 		}
 
 		/**
@@ -444,7 +447,7 @@ if ( ! class_exists( 'Cherry_Services_List' ) ) {
 		public function get_option( $option, $default = false ) {
 
 			if ( null === $this->options_val ) {
-				$this->options_val = get_option( $this->option_key() );
+				$this->options_val = get_option( $this->option_key(), array() );
 			}
 
 			if ( isset( $this->options_val[ $option ] ) ) {
@@ -479,7 +482,7 @@ if ( ! class_exists( 'Cherry_Services_List' ) ) {
 			wp_register_script(
 				'cherry-services-admin',
 				$this->plugin_url( 'admin/assets/js/cherry-services-admin.js' ),
-				array( 'serialize-object' ),
+				array( 'jquery', 'serialize-object', 'cherry-js-core' ),
 				$this->get_version(),
 				true
 			);
@@ -546,8 +549,8 @@ if ( ! class_exists( 'Cherry_Services_List' ) ) {
 			wp_register_script(
 				'cherry-services',
 				$this->plugin_url( 'public/assets/js/cherry-services.js' ),
-				array( 'jquery' ),
-				'1.0.0',
+				array( 'jquery', 'cherry-js-core' ),
+				$this->get_version(),
 				true
 			);
 

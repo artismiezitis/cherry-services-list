@@ -57,16 +57,14 @@ if ( ! class_exists( 'Cherry_Services_Ajax' ) ) {
 		 */
 		public function validate_bool( $atts = array() ) {
 
-			if ( empty( $atts ) ) {
-				return $atts;
-			}
+			$defaults = ( new Cherry_Services_List_Data() )->get_defaults();
+			$atts = array_intersect_key( array_filter( wp_unslash( $atts ), 'is_scalar' ), $defaults );
+			$atts = wp_parse_args( $atts, $defaults );
 
 			$bool_keys = array(
-				'show_name',
-				'show_photo',
+				'show_title',
+				'show_media',
 				'show_content',
-				'show_position',
-				'show_social',
 				'show_filters',
 				'show_item_more',
 				'ajax_more',
@@ -97,8 +95,8 @@ if ( ! class_exists( 'Cherry_Services_Ajax' ) ) {
 
 			$cat = '';
 
-			if ( isset( $_POST['cats'] ) ) {
-				$cat = esc_attr( $_POST['cats'] );
+			if ( isset( $_POST['cats'] ) && is_string( $_POST['cats'] ) ) {
+				$cat = sanitize_text_field( wp_unslash( $_POST['cats'] ) );
 			}
 
 			return $cat;
@@ -112,7 +110,7 @@ if ( ! class_exists( 'Cherry_Services_Ajax' ) ) {
 		 */
 		public function filter_posts() {
 
-			$cat = ! empty( $_POST['cat'] ) ? $_POST['cat'] : 'all-cats';
+			$cat = ! empty( $_POST['cat'] ) && is_string( $_POST['cat'] ) ? sanitize_text_field( wp_unslash( $_POST['cat'] ) ) : 'all-cats';
 
 			$atts = isset( $_POST['atts'] ) && is_array( $_POST['atts'] ) ? $_POST['atts'] : array();
 			$atts = $this->validate_bool( $atts );

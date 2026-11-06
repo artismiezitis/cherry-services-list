@@ -226,10 +226,9 @@ class Cherry_Services_Options_Page extends Cherry_Services_List {
 			'edit.php?post_type=' . $this->post_type(),
 			esc_html__( 'Cherry Services Options', 'cherry-services' ),
 			esc_html__( 'Settings', 'cherry-services' ),
-			'edit_theme_options',
+			'manage_options',
 			$this->page_slug,
 			array( $this, 'options_page' ),
-			'',
 			64
 		);
 	}
@@ -365,13 +364,13 @@ class Cherry_Services_Options_Page extends Cherry_Services_List {
 	 */
 	public function process_options() {
 
-		if ( empty( $_POST['post_array'] ) || empty( $_POST['nonce'] ) || empty( $_POST['type'] ) ) {
+		if ( empty( $_POST['post_array'] ) || ! is_array( $_POST['post_array'] ) || empty( $_POST['nonce'] ) || ! is_string( $_POST['nonce'] ) || empty( $_POST['type'] ) || ! is_string( $_POST['type'] ) ) {
 			exit( 'Invalid data' );
 		}
 
-		$post_array = $_POST['post_array'];
-		$nonce      = $_POST['nonce'];
-		$type       = $_POST['type'];
+		$post_array = $this->sanitize_options( wp_unslash( $_POST['post_array'] ) );
+		$nonce      = sanitize_text_field( wp_unslash( $_POST['nonce'] ) );
+		$type       = sanitize_key( $_POST['type'] );
 
 		if ( ! wp_verify_nonce( $nonce, 'cherry_ajax_nonce' ) ) {
 			exit( 'Invalid data' );
@@ -399,7 +398,7 @@ class Cherry_Services_Options_Page extends Cherry_Services_List {
 
 				break;
 			case 'restore':
-				$default_options = get_option( $this->option_key() . '_default' );
+				$default_options = $this->sanitize_options( get_option( $this->option_key() . '_default', array() ) );
 				update_option( $this->option_key(), $default_options );
 
 				$response = array(
@@ -408,10 +407,46 @@ class Cherry_Services_Options_Page extends Cherry_Services_List {
 				);
 
 				break;
+			default:
+				wp_send_json_error( array( 'message' => __( 'Unknown settings action.', 'cherry-services' ) ), 400 );
 		}
 
 		wp_send_json( $response );
 
+	}
+
+	/** Validate the existing settings schema before storing values. */
+	public function sanitize_options( $options ) {
+		$options = is_array( $options ) ? $options : array();
+		$result = wp_parse_args( get_option( $this->option_key(), array() ), $this->default_options );
+		foreach ( $this->default_options as $key => $default ) {
+			if ( ! isset( $options[ $key ] ) || ! is_scalar( $options[ $key ] ) ) {
+				continue;
+			}
+			$value = $options[ $key ];
+			switch ( $key ) {
+				case 'archive-page':
+					$result[ $key ] = 'page' === get_post_type( absint( $value ) ) ? absint( $value ) : '';
+					break;
+				case 'archive-page-shows':
+					$result[ $key ] = 'content' === $value ? 'content' : 'posts';
+					break;
+				case 'posts-per-page':
+					$result[ $key ] = min( 100, max( 1, absint( $value ) ) );
+					break;
+				case 'archive-columns':
+					$result[ $key ] = min( 4, max( 1, absint( $value ) ) );
+					break;
+				case 'single-template':
+				case 'listing-template':
+					$templates = cherry_services_tools()->get_templates( 'single-template' === $key ? 'single' : 'listing' );
+					$result[ $key ] = isset( $templates[ $value ] ) ? $value : $default;
+					break;
+				default:
+					$result[ $key ] = sanitize_text_field( (string) $value );
+			}
+		}
+		return $result;
 	}
 
 	/**

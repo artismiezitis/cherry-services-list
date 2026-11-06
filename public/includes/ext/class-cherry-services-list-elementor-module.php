@@ -104,7 +104,7 @@ class Cherry_Services_Elementor_Widget extends Elementor\Widget_Base {
 		$mapped_args = array(
 			'label'   => $data['title'],
 			'type'    => $type,
-			'default' => array( $data['value'] ),
+			'default' => $data['value'],
 		);
 
 		if ( 'switcher' === $data['type'] ) {
@@ -144,7 +144,7 @@ class Cherry_Services_Elementor_Widget extends Elementor\Widget_Base {
 		return isset( $this->rewrite[ $name ] ) ? $this->rewrite[ $name ] : $name;
 	}
 
-	protected function _register_controls() {
+	protected function register_controls() {
 
 		$args = $this->get_shortcode( 'atts' );
 
@@ -164,7 +164,9 @@ class Cherry_Services_Elementor_Widget extends Elementor\Widget_Base {
 			$name        = $this->_sanitize_attr_name( $name );
 			$mapped_args = $this->_sanitize_attr_data( $arg );
 
-			$this->add_control( $name, $mapped_args );
+			if ( is_array( $mapped_args ) ) {
+				$this->add_control( $name, $mapped_args );
+			}
 
 		}
 
@@ -174,7 +176,7 @@ class Cherry_Services_Elementor_Widget extends Elementor\Widget_Base {
 
 	protected function render() {
 
-		$settings       = $this->get_settings();
+		$settings       = $this->get_settings_for_display();
 		$shortcode      = '[%1$s%2$s]';
 		$shortcode_atts = '';
 		$args           = $this->get_shortcode( 'atts' );
@@ -205,21 +207,17 @@ class Cherry_Services_Elementor_Widget extends Elementor\Widget_Base {
 				}
 			}
 
-			$shortcode_atts .= sprintf( ' %1$s="%2$s"', $name, $val );
+			$shortcode_atts .= sprintf( ' %1$s="%2$s"', $name, esc_attr( $val ) );
 		}
 
 		?>
-		<div class="elementor-<?php $this->tag; ?>"><?php
-			if ( cherry_services_list()->elementor_compat->in_elementor() ) {
-				echo do_shortcode( sprintf( $shortcode, $this->tag, $shortcode_atts ) );
-			} else {
-				echo sprintf( $shortcode, $this->tag, $shortcode_atts );
-			}
+		<div class="elementor-<?php echo esc_attr( $this->tag ); ?>"><?php
+			echo do_shortcode( sprintf( $shortcode, $this->tag, $shortcode_atts ) );
 		?></div>
 		<?php
 	}
 
-	protected function _content_template() {}
+	protected function content_template() {}
 
 	/**
 	 * Returns widget instance for register function

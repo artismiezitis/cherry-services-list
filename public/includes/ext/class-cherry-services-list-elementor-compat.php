@@ -49,9 +49,9 @@ if ( ! class_exists( 'Cherry_Services_List_Elementor_Compat' ) ) {
 			$this->shortcodes = $shortcodes;
 
 			add_action( 'elementor/init', array( $this, 'register_category' ) );
-			add_action( 'elementor/widgets/widgets_registered', array( $this, 'register_widgets' ) );
+			add_action( 'elementor/widgets/register', array( $this, 'register_widgets' ) );
 
-			add_action( 'wp_ajax_elementor_render_widget', array( $this, 'set_elementor_ajax' ), 10, -1 );
+			add_action( 'wp_ajax_elementor_render_widget', array( $this, 'set_elementor_ajax' ), 10, 0 );
 
 			add_action( 'elementor/frontend/before_enqueue_scripts', array( $this, 'assets' ) );
 		}
@@ -80,6 +80,9 @@ if ( ! class_exists( 'Cherry_Services_List_Elementor_Compat' ) ) {
 		 * @return void
 		 */
 		public function in_elementor() {
+			if ( ! class_exists( 'Elementor\Plugin' ) ) {
+				return false;
+			}
 
 			$result = false;
 
@@ -101,9 +104,9 @@ if ( ! class_exists( 'Cherry_Services_List_Elementor_Compat' ) ) {
 		public function register_widgets( $widgets_manager ) {
 
 			foreach ( $this->shortcodes as $data ) {
-				require $data['file'];
+				require_once $data['file'];
 				unset( $data['file'] );
-				$widgets_manager->register_widget_type( call_user_func( array( $data['class'], 'get_instance' ) ) );
+				$widgets_manager->register( call_user_func( array( $data['class'], 'get_instance' ) ) );
 			}
 
 		}

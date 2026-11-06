@@ -74,6 +74,7 @@ class Cherry_Services_List_Init extends Cherry_Services_List {
 			'labels'          => $labels,
 			'supports'        => $supports,
 			'public'          => true,
+			'show_in_rest'    => true,
 			'capability_type' => 'post',
 			'hierarchical'    => false, // Hierarchical causes memory issues - WP loads all records!
 			'rewrite'         => array(
@@ -207,6 +208,7 @@ class Cherry_Services_List_Init extends Cherry_Services_List {
 			'hierarchical'          => true,
 			'labels'                => $labels,
 			'show_ui'               => true,
+			'show_in_rest'          => true,
 			'show_admin_column'     => true,
 			'update_count_callback' => '_update_post_term_count',
 			'query_var'             => true,

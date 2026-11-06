@@ -33,6 +33,9 @@ class Cherry_Services_List_Data {
 	 */
 	private $query_args = array();
 
+	/** Template replacement values. */
+	public $replace_args = array();
+
 	/**
 	 * Holder for the main query object, while services query processing
 	 *
@@ -56,8 +59,7 @@ class Cherry_Services_List_Data {
 	 */
 	public function __construct( $args = array() ) {
 
-		$defaults   = $this->get_defaults();
-		$this->args = wp_parse_args( $args, $defaults );
+		$defaults = $this->get_defaults();
 
 		/**
 		 * Filter the array of arguments.
@@ -65,7 +67,7 @@ class Cherry_Services_List_Data {
 		 * @since 1.0.0
 		 * @param array Arguments.
 		 */
-		$args = apply_filters( 'cherry_the_services_args', $args );
+		$this->args = wp_parse_args( apply_filters( 'cherry_the_services_args', $args ), $defaults );
 
 	}
 
@@ -279,12 +281,17 @@ class Cherry_Services_List_Data {
 		 */
 		$args = apply_filters( 'cherry_get_services_args', $args );
 
-		if ( 0 === $args['limit'] ) {
+		$this->args       = wp_parse_args( $args, $this->args );
+		$args             = $this->args;
+		$this->query_args = array();
+
+		if ( 0 === (int) $args['limit'] ) {
 			$args['limit'] = -1;
 		}
 
 		// The Query Arguments.
 		$this->query_args['post_type']        = cherry_services_list()->post_type();
+		$this->query_args['post_status']      = 'publish';
 		$this->query_args['posts_per_page']   = $args['limit'];
 		$this->query_args['orderby']          = $args['orderby'];
 		$this->query_args['order']            = $args['order'];
@@ -329,10 +336,6 @@ class Cherry_Services_List_Data {
 		// The Query.
 		$query = new WP_Query( $this->query_args );
 
-		if ( ! $query->have_posts() ) {
-			return false;
-		}
-
 		return $query;
 
 	}
@@ -345,14 +348,14 @@ class Cherry_Services_List_Data {
 	 */
 	public function add_post_params() {
 
-		$ids = explode( ',', $this->args['id'] );
+		$ids = wp_parse_id_list( $this->args['id'] );
 
 		if ( empty( $ids ) ) {
 			return;
 		}
 
 		$ids = array_map( 'intval', $ids );
-		$ids = array_filter( $ids );
+		$ids = array_values( array_filter( $ids ) );
 
 		if ( empty( $ids ) ) {
 			return;
@@ -375,7 +378,11 @@ class Cherry_Services_List_Data {
 	 */
 	public function add_pager_params() {
 
-		$args['pager'] = filter_var( $this->args['pager'], FILTER_VALIDATE_BOOLEAN );
+		$this->args['pager'] = filter_var( $this->args['pager'], FILTER_VALIDATE_BOOLEAN );
+		if ( wp_doing_ajax() ) {
+			$this->query_args['paged'] = max( 1, (int) $this->args['paged'] );
+			return;
+		}
 
 		if ( isset( $this->args['pager'] ) && ( true === $this->args['pager'] ) ) {
 
@@ -523,6 +530,8 @@ class Cherry_Services_List_Data {
 
 		global $post, $wp_query;
 
+		$args = wp_parse_args( $args, $this->get_defaults() );
+
 		// Item template.
 		$template = cherry_services_templater()->get_template_by_name( $args['template'] );
 
@@ -627,10 +636,10 @@ class Cherry_Services_List_Data {
 		}
 
 		$item_format = '<li class="cherry-services-filter_item%3$s"><a href="#!%1$s" class="cherry-services-filter_link" data-term="%1$s">%2$s</a></li>';
-		$terms       = get_terms( cherry_services_list()->tax( 'category' ) );
+		$terms       = get_terms( array( 'taxonomy' => cherry_services_list()->tax( 'category' ) ) );
 		$result      = sprintf( $item_format, 'all-cats', __( 'All', 'cherry-services' ), ' active' );
 
-		if ( ! empty( $terms ) ) {
+		if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
 			foreach ( $terms as $term ) {
 
 				if ( ! empty( $cats ) && ! in_array( $term->slug, $cats ) ) {

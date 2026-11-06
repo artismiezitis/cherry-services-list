@@ -94,3 +94,9 @@
 		padding: 0 0 30px;
 	}
 }
+.wp-site-blocks > .cherry-services-main {
+	max-width: var(--wp--style--global--wide-size, 1200px);
+	margin-inline: auto;
+	padding: 24px 20px;
+	box-sizing: border-box;
+}

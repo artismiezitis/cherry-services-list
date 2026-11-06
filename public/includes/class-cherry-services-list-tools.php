@@ -203,7 +203,9 @@ class Cherry_Services_List_Tools extends Cherry_Services_List {
 
 		$object = get_queried_object();
 
-		if ( isset( $object->post_title ) ) {
+		if ( $object instanceof WP_Post_Type ) {
+			printf( $format, esc_html( $object->labels->archive_title ?? $object->labels->name ) );
+		} elseif ( isset( $object->post_title ) ) {
 			printf( $format, $object->post_title );
 		} elseif ( isset( $object->name ) ) {
 			printf( $format, $object->name );

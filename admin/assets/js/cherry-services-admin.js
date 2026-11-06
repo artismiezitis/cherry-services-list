@@ -11,7 +11,7 @@
 			if( CherryJsCore.status.is_ready ){
 				self.readyRender( self );
 			}else{
-				CherryJsCore.variable.$document.on( 'ready', self.readyRender( self ) );
+				$( function() { self.readyRender( self ); } );
 			}
 
 		},

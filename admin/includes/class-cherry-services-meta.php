@@ -72,6 +72,7 @@ class Cherry_Services_List_Meta extends Cherry_Services_List {
 			),
 			admin_url( 'admin.php' )
 		);
+		$url = wp_nonce_url( $url, 'cherry_services_clone_' . $post->ID );
 
 		$actions['clone'] = sprintf(
 			'<a href="%1$s" title="%3$s" rel="permalink">%2$s</a>',
@@ -99,23 +100,19 @@ class Cherry_Services_List_Meta extends Cherry_Services_List {
 		if ( empty( $_REQUEST['post'] ) ) {
 			wp_die( __( 'No post to duplicate has been supplied!', 'cherry-services' ) );
 		}
+		check_admin_referer( 'cherry_services_clone_' . absint( $_REQUEST['post'] ) );
 
 		if ( ! current_user_can( 'edit_post', $_REQUEST['post'] ) ) {
 			wp_die( 'You don\'t have permissions to do this!', 'cherry-services' );
 		}
-
-		global $wpdb;
 
 		$post_id         = absint( $_REQUEST['post'] );
 		$post            = get_post( $post_id );
 		$current_user    = wp_get_current_user();
 		$new_post_author = $current_user->ID;
 
-		if ( ! $post ) {
-			wp_die(
-				sprintf( __( 'Post creation failed, could not find original post: %s', 'cherry-services' ) ),
-				$post_id
-			);
+		if ( ! $post || $this->post_type() !== $post->post_type ) {
+			wp_die( esc_html__( 'The service to duplicate could not be found.', 'cherry-services' ) );
 		}
 
 		$args = array(
@@ -134,32 +131,26 @@ class Cherry_Services_List_Meta extends Cherry_Services_List {
 			'menu_order'     => $post->menu_order
 		);
 
-		$new_post_id = wp_insert_post( $args );
-
-		$post_terms = wp_get_object_terms( $post_id, 'group', array( 'fields' => 'slugs' ) );
-		wp_set_object_terms( $new_post_id, $post_terms, 'group', false );
-
-		$post_meta_infos = $wpdb->get_results(
-			"SELECT meta_key, meta_value FROM $wpdb->postmeta WHERE post_id = $post_id"
-		);
-
-		if ( 0 !== count( $post_meta_infos ) ) {
-
-			$sql_query = "INSERT INTO $wpdb->postmeta (post_id, meta_key, meta_value) ";
-
-			foreach ( $post_meta_infos as $meta_info ) {
-
-				$meta_key        = $meta_info->meta_key;
-				$meta_value      = addslashes( $meta_info->meta_value );
-				$sql_query_sel[] = "SELECT $new_post_id, '$meta_key', '$meta_value'";
-
-			}
-
-			$sql_query.= implode( " UNION ALL ", $sql_query_sel );
-			$wpdb->query( $sql_query );
+		$new_post_id = wp_insert_post( wp_slash( $args ), true );
+		if ( is_wp_error( $new_post_id ) ) {
+			wp_die( esc_html( $new_post_id->get_error_message() ) );
 		}
 
-		wp_redirect( admin_url( 'post.php?action=edit&post=' . $new_post_id ) );
+		$post_terms = wp_get_object_terms( $post_id, $this->tax(), array( 'fields' => 'ids' ) );
+		if ( ! is_wp_error( $post_terms ) ) {
+			wp_set_object_terms( $new_post_id, array_map( 'intval', $post_terms ), $this->tax() );
+		}
+
+		foreach ( get_post_meta( $post_id ) as $meta_key => $values ) {
+			if ( in_array( $meta_key, array( '_edit_lock', '_edit_last' ), true ) ) {
+				continue;
+			}
+			foreach ( $values as $value ) {
+				add_post_meta( $new_post_id, $meta_key, wp_slash( maybe_unserialize( $value ) ) );
+			}
+		}
+
+		wp_safe_redirect( admin_url( 'post.php?action=edit&post=' . $new_post_id ) );
 
 		exit;
 	}

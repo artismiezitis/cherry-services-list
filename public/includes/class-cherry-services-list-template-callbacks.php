@@ -288,7 +288,7 @@ class Cherry_Services_List_Template_Callbacks {
 
 		$form = get_post_meta( $post->ID, 'cherry-services-cta-form', true );
 
-		if ( empty( $form ) ) {
+		if ( empty( $form ) || ! is_array( $form ) ) {
 			return;
 		}
 
@@ -329,11 +329,17 @@ class Cherry_Services_List_Template_Callbacks {
 		$result = '';
 
 		foreach ( $form as $field ) {
+			if ( ! is_array( $field ) ) {
+				continue;
+			}
 
 			$field    = wp_parse_args( $field, $defaults );
-			$name     = 'service-cta[' . $field['name'] . ']';
+			if ( ! isset( $fields_format[ $field['type'] ] ) ) {
+				continue;
+			}
+			$name     = 'service-cta[' . esc_attr( $field['name'] ) . ']';
 			$required = ( isset( $field['required'] ) && 'no' !== $field['required'] ) ? 'required' : '';
-			$control  = sprintf( $fields_format[ $field['type'] ], $name, $field['label'], $required );
+			$control  = sprintf( $fields_format[ $field['type'] ], $name, esc_attr( $field['label'] ), $required );
 			$result  .= $this->wrap_form_control( $control, $field['width'] );
 
 		}
@@ -341,6 +347,7 @@ class Cherry_Services_List_Template_Callbacks {
 		$ref      = isset( $this->parent_query->post->ID ) ? get_permalink( $this->parent_query->post->ID ) : false;
 		$hidden   = '<input type="hidden" name="cherry-services-form" value="' . $post->ID . '">';
 		$hidden  .= '<input type="hidden" name="cherry-services-ref" value="' . esc_url( $ref ) . '">';
+		$hidden  .= wp_nonce_field( 'cherry-services-form-' . $post->ID, 'cherry-services-nonce', false, false );
 		$controls = sprintf( '<div class="cherry-services-row">%s</div>', $result );
 		$submit   = sprintf( $submit_format, esc_html( $sumbit_text ) );
 
@@ -749,7 +756,7 @@ class Cherry_Services_List_Template_Callbacks {
 	 *
 	 * @return array
 	 */
-	public function pass_column_classes( $classes = array(), $args ) {
+	public function pass_column_classes( $classes = array(), $args = array() ) {
 
 		if ( empty( $args['is_service'] ) ) {
 			return $classes;

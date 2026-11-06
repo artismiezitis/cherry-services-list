@@ -7,3 +7,6 @@
 .skills/
 AGENTS.md
 SKILL.md
+
+# Generated release packages
+/dist/
